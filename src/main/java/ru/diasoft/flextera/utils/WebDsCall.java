@@ -1,21 +1,18 @@
 package ru.diasoft.flextera.utils;
 
-import static spark.Spark.setPort;
-import static spark.Spark.get;
-import static spark.Spark.post;
-
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.HashMap;
-import java.util.Map;
 
-import ru.diasoft.flextera.common.util.PrettyPrinter;
-import ru.diasoft.utils.XMLUtil;
+import ru.diasoft.flextera.cvptools.util.dacall.ServiceCallUtils;
+import ru.diasoft.flextera.cvptools.util.dacall.type.DSCallConfigImpl;
+import ru.diasoft.flextera.cvptools.util.dacall.type.ServiceConfigImpl;
 import spark.Request;
 import spark.Response;
 import spark.Route;
 import spark.servlet.SparkApplication;
+import checkers.nullness.quals.NonNull;
 import freemarker.template.Configuration;
 import freemarker.template.SimpleHash;
 import freemarker.template.Template;
@@ -27,6 +24,8 @@ public class WebDsCall implements SparkApplication {
     private final String PLATFORM_UTILS_VERSION = "7.02.01-12101201";
     private static Integer portNumber = 8082; 
 
+    private  @NonNull Long testField;
+    
     public static void main(String[] args) throws IOException {
     	if (args.length != 0) {
         	try {
@@ -40,12 +39,13 @@ public class WebDsCall implements SparkApplication {
 
     public WebDsCall() throws IOException {
     	init();
+    	testField = 1L;
     }
 
 
 	public void init() {
         cfg = createFreemarkerConfiguration();
-        setPort(portNumber);
+        spark.Spark.setPort(portNumber);
         try {
 			initializeRoutes();
 		} catch (IOException e) {
@@ -84,42 +84,13 @@ public class WebDsCall implements SparkApplication {
     }
 
     private void initializeRoutes() throws IOException {
-    	 get(new FreemarkerBasedRoute("/bootstrap/3.1.1/css/bootstrap.min.css", "bootstrap/3.1.1/css/bootstrap.min.css") {
-             @Override
-             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
-             	SimpleHash root = new SimpleHash();
-             	response.type("text/css; charset=UTF-8");
-             	template.process(root, writer);
-             }
-         });
-    	 get(new FreemarkerBasedRoute("/bootstrap/3.1.1/css/bootstrap-theme.min.css", "bootstrap/3.1.1/css/bootstrap-theme.min.css") {
-             @Override
-             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
-             	SimpleHash root = new SimpleHash();
-             	response.type("text/css; charset=UTF-8");
-             	template.process(root, writer);
-             }
-         });
-    	 get(new FreemarkerBasedRoute("/bootstrap/3.1.1/js/bootstrap.min.js", "bootstrap/3.1.1/js/bootstrap.min.js") {
-             @Override
-             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
-             	SimpleHash root = new SimpleHash();
-             	response.type("text/javascript; charset=UTF-8");
-             	template.process(root, writer);
-             }
-         });
-    	 get(new FreemarkerBasedRoute("/bootstrap/3.1.1/js/jquery-2.1.1.min.js", "bootstrap/3.1.1/js/jquery-2.1.1.min.js") {
-             @Override
-             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
-             	SimpleHash root = new SimpleHash();
-             	response.type("text/javascript; charset=UTF-8");
-             	template.process(root, writer);
-             }
-         });
-    	 
-    	
-    	// this is the blog home page
-        get(new FreemarkerBasedRoute("/call", "call.ftl") {
+    	initBootstrapResourceRoutes();
+    	initBusinessRoutes();
+    }
+
+	private void initBusinessRoutes() throws IOException {
+		// this is the blog home page
+    	spark.Spark.get(new FreemarkerBasedRoute("/dscall", "call.ftl") {
             @Override
             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
             	SimpleHash root = new SimpleHash();
@@ -129,7 +100,7 @@ public class WebDsCall implements SparkApplication {
             }
         });
         
-        post(new FreemarkerBasedRoute("/call", "call.ftl") {
+    	spark.Spark.post(new FreemarkerBasedRoute("/dscall", "call.ftl") {
             @Override
             protected void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
 
@@ -143,13 +114,23 @@ public class WebDsCall implements SparkApplication {
                 String resultText = null;
                 String callStatus = "success";
                 
-                XMLUtil xmlUtil = new XMLUtil(userName, userPassword);
-                Map<String, Object> parameters;
+                ServiceConfigImpl serviceConfig = new ServiceConfigImpl();
+                serviceConfig.setUrl(serverContext);
+                serviceConfig.setHost(serverName);
+                serviceConfig.setService(serviceName);
+                serviceConfig.setLogin(userName);
+                serviceConfig.setPass(userPassword);
+                serviceConfig.setHashPassword(Boolean.FALSE);
+                
+                DSCallConfigImpl dscallConfig = new DSCallConfigImpl();
+				dscallConfig.setServiceConfig(serviceConfig);
+				dscallConfig.setRequest(requestText);				
+				
                 Long startTime = System.nanoTime();
 				try {
-					parameters = xmlUtil.parse(requestText);
-					Map<String, Object> resultMap = xmlUtil.callService(serverName + serverContext, serviceName, parameters);
-					resultText = PrettyPrinter.INSTANCE.getFormattedXML(xmlUtil.createXML(resultMap));
+					ServiceCallUtils serviceCallUtils = new ServiceCallUtils(dscallConfig);
+					resultText = serviceCallUtils.call();
+					dscallConfig.setResult(resultText);
 				} catch (Exception e) {
 					e.printStackTrace();
 					resultText = e.getLocalizedMessage();
@@ -176,7 +157,7 @@ public class WebDsCall implements SparkApplication {
         });
 
         // used to process internal errors
-        get(new FreemarkerBasedRoute("/internal_error", "error_template.ftl") {
+    	spark.Spark.get(new FreemarkerBasedRoute("/internal_error", "error_template.ftl") {
             @Override
             protected void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
                 SimpleHash root = new SimpleHash();
@@ -185,7 +166,42 @@ public class WebDsCall implements SparkApplication {
                 template.process(root, writer);
             }
         });
-    }
+	}
+
+	private void initBootstrapResourceRoutes() throws IOException {
+		spark.Spark.get(new FreemarkerBasedRoute("/bootstrap/3.1.1/css/bootstrap.min.css", "bootstrap/3.1.1/css/bootstrap.min.css") {
+             @Override
+             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
+             	SimpleHash root = new SimpleHash();
+             	response.type("text/css; charset=UTF-8");
+             	template.process(root, writer);
+             }
+         });
+    	spark.Spark.get(new FreemarkerBasedRoute("/bootstrap/3.1.1/css/bootstrap-theme.min.css", "bootstrap/3.1.1/css/bootstrap-theme.min.css") {
+             @Override
+             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
+             	SimpleHash root = new SimpleHash();
+             	response.type("text/css; charset=UTF-8");
+             	template.process(root, writer);
+             }
+         });
+    	spark.Spark.get(new FreemarkerBasedRoute("/bootstrap/3.1.1/js/bootstrap.min.js", "bootstrap/3.1.1/js/bootstrap.min.js") {
+             @Override
+             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
+             	SimpleHash root = new SimpleHash();
+             	response.type("text/javascript; charset=UTF-8");
+             	template.process(root, writer);
+             }
+         });
+    	spark.Spark.get(new FreemarkerBasedRoute("/bootstrap/3.1.1/js/jquery-2.1.1.min.js", "bootstrap/3.1.1/js/jquery-2.1.1.min.js") {
+             @Override
+             public void doHandle(Request request, Response response, Writer writer) throws IOException, TemplateException {
+             	SimpleHash root = new SimpleHash();
+             	response.type("text/javascript; charset=UTF-8");
+             	template.process(root, writer);
+             }
+         });
+	}
 
     private Configuration createFreemarkerConfiguration() {
         Configuration retVal = new Configuration();

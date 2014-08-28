@@ -2,7 +2,7 @@
 
 <html>
 	<head>
-		<title>Login</title>
+		<title>Wed DsCall</title>
 		<style type="text/css">
 			.label {text-align: right}
 			.error {color: red}
@@ -80,7 +80,7 @@
 				  </div>
 
 				  <div class="form-group">
-				    <label for="inputPassword" class="col-sm-2 control-label">Request</label>
+				    <label for="inputPassword" class="col-sm-2 control-label">XML request</label>
 				    <div class="col-sm-10">
 						<textarea class="form-control" rows="7" style="font-family:monospace;" name="requestText">${requestText!""}</textarea>
 				    </div>
@@ -130,10 +130,8 @@
 				
 				<div class="panel-body">
 				  <div class="form-group">
-				    <label class="col-sm-2 control-label">ru.diasoft.fa.platform.lib:util</label>
-				    <div class="col-sm-10">
-						<label class="col-sm-2 control-label" name="platformUtilsVersion">${platformUtilsVersion!""}</label>
-				    </div>
+				  	<label class="control-label">ru.diasoft.fa.platform.lib:util</label>
+				    <label class="control-label">${platformUtilsVersion!""}</label>
 				  </div>
 				</div>
 			</div>
