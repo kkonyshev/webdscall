@@ -21,6 +21,25 @@
 
 
 	<body>
+	<!--
+		<input id="fileupload" type="file" name="files[]" data-url="dscall" multiple>
+		<script src="../bootstrap/3.1.1/js/vendor/jquery.ui.widget.js"></script>
+		<script src="../bootstrap/3.1.1/js/jquery.iframe-transport.js"></script>
+		<script src="../bootstrap/3.1.1/js/jquery.fileupload.js"></script>
+		<script>
+		$(function () {
+		    $('#fileupload').fileupload({
+		        dataType: 'json',
+		        done: function (e, data) {
+		            $.each(data.result.files, function (index, file) {
+		                $('<p/>').text(file.name).appendTo(document.body);
+		            });
+		        }
+		    });
+		});
+	-->
+		</script>
+		
 		<div class="panel panel-primary" >
 			
 			<div class="panel-heading">
